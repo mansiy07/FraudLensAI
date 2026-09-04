@@ -5,17 +5,29 @@ function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
+
+  // ==========================================
+  // FETCH TRANSACTIONS
+  // ==========================================
 
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         const token = localStorage.getItem("token");
 
+        if (!token) {
+          throw new Error("Please login again");
+        }
+
         const response = await fetch(
           "http://localhost:5000/api/transactions",
           {
+            method: "GET",
             headers: {
               Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
             },
           }
         );
@@ -30,7 +42,8 @@ function Transactions() {
 
         setTransactions(data.transactions || []);
       } catch (err) {
-        setError(err.message);
+        console.error("Transaction fetch error:", err);
+        setError(err.message || "Something went wrong");
       } finally {
         setLoading(false);
       }
@@ -39,35 +52,143 @@ function Transactions() {
     fetchTransactions();
   }, []);
 
+  // ==========================================
+  // EXPORT DATA
+  // ==========================================
+
+  const handleExport = () => {
+    console.log("EXPORT BUTTON CLICKED");
+
+    if (!transactions || transactions.length === 0) {
+      setExportMessage("No transactions available to export.");
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setExportMessage("Preparing CSV file...");
+
+      const headers = [
+        "Transaction ID",
+        "Amount",
+        "Merchant",
+        "Category",
+        "Location",
+        "Payment Method",
+        "Risk Score",
+        "Risk Level",
+        "Status",
+      ];
+
+      const rows = transactions.map((transaction) => [
+        transaction.transactionId ?? "",
+        transaction.amount ?? "",
+        transaction.merchant ?? "",
+        transaction.category ?? "",
+        transaction.location ?? "",
+        transaction.paymentMethod ?? "",
+        transaction.riskScore ?? 0,
+        transaction.riskLevel ?? "",
+        transaction.status ?? "",
+      ]);
+
+      const escapeCSV = (value) => {
+        const text = String(value ?? "");
+        return `"${text.replace(/"/g, '""')}"`;
+      };
+
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map(escapeCSV).join(","))
+        .join("\r\n");
+
+      // UTF-8 BOM so Excel displays ₹ and other Unicode correctly.
+      const csvFile = "\uFEFF" + csvContent;
+
+      const blob = new Blob([csvFile], {
+        type: "text/csv;charset=utf-8;",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "FraudLens-Transactions.csv";
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+
+      // Native browser download.
+      link.click();
+
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 2000);
+
+      setExportMessage("FraudLens-Transactions.csv downloaded successfully.");
+
+      setTimeout(() => {
+        setExportMessage("");
+      }, 3000);
+    } catch (err) {
+      console.error("Export error:", err);
+      setExportMessage("Unable to export transactions.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // ==========================================
+  // RISK CLASS
+  // ==========================================
+
   const getRiskClass = (risk) => {
-    if (risk >= 80) {
+    const score = Number(risk) || 0;
+
+    if (score >= 80) {
       return "risk-high";
     }
 
-    if (risk >= 50) {
+    if (score >= 50) {
       return "risk-medium";
     }
 
     return "risk-low";
   };
 
+  // ==========================================
+  // STATUS CLASS
+  // ==========================================
+
   const getStatusClass = (status) => {
     if (status === "Blocked") {
       return "blocked";
     }
 
-    if (status === "Review") {
+    if (status === "Pending") {
       return "review";
+    }
+
+    if (status === "Approved") {
+      return "safe";
     }
 
     return "safe";
   };
 
+  // ==========================================
+  // LOADING
+  // ==========================================
+
   if (loading) {
     return (
       <div className="page-container">
+
         <div className="page-header">
+
           <div>
+
             <p className="eyebrow">
               TRANSACTION MONITORING
             </p>
@@ -79,20 +200,30 @@ function Transactions() {
             <p className="page-subtitle">
               Loading transactions...
             </p>
+
           </div>
+
         </div>
+
       </div>
     );
   }
 
+  // ==========================================
+  // PAGE
+  // ==========================================
+
   return (
     <div className="page-container">
 
-      {/* ================= HEADER ================= */}
+      {/* ======================================
+          HEADER
+      ====================================== */}
 
       <div className="page-header">
 
         <div>
+
           <p className="eyebrow">
             TRANSACTION MONITORING
           </p>
@@ -102,28 +233,82 @@ function Transactions() {
           </h1>
 
           <p className="page-subtitle">
-            Monitor and review all payment transactions
-            processed by FraudLens AI.
+            Monitor and review all payment
+            transactions processed by FraudLens AI.
           </p>
+
         </div>
 
-        <button
-          className="secondary-btn"
-          type="button"
+        {/* ====================================
+            EXPORT BUTTON
+        ==================================== */}
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "8px",
+            position: "relative",
+            zIndex: 100000,
+            pointerEvents: "auto",
+          }}
         >
-          Export Data
-        </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={handleExport}
+            disabled={transactions.length === 0 || exporting}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              zIndex: 100001,
+              pointerEvents:
+                transactions.length === 0 || exporting
+                  ? "none"
+                  : "auto",
+              cursor:
+                transactions.length === 0 || exporting
+                  ? "not-allowed"
+                  : "pointer",
+              minWidth: "120px",
+            }}
+          >
+            {exporting
+              ? "Exporting..."
+              : transactions.length > 0
+              ? "Export Data"
+              : "No Data"}
+          </button>
+
+          {exportMessage && (
+            <span
+              style={{
+                color: "#22c55e",
+                fontSize: "12px",
+                fontWeight: "600",
+                textAlign: "right",
+              }}
+            >
+              {exportMessage}
+            </span>
+          )}
+        </div>
 
       </div>
 
-
-      {/* ================= TRANSACTIONS PANEL ================= */}
+      {/* ======================================
+          TRANSACTIONS PANEL
+      ====================================== */}
 
       <div className="panel">
 
         <div className="panel-header">
 
           <div>
+
             <p className="eyebrow">
               TRANSACTION MONITOR
             </p>
@@ -131,6 +316,7 @@ function Transactions() {
             <h2>
               All Transactions
             </h2>
+
           </div>
 
           <span className="live-badge">
@@ -139,8 +325,9 @@ function Transactions() {
 
         </div>
 
-
-        {/* ================= ERROR ================= */}
+        {/* ====================================
+            ERROR
+        ==================================== */}
 
         {error && (
           <p
@@ -153,108 +340,165 @@ function Transactions() {
           </p>
         )}
 
+        {/* ====================================
+            TABLE
+        ==================================== */}
 
-        {/* ================= TABLE ================= */}
+        {!error && (
+          <div className="table-container">
 
-        <div className="table-container">
+            <table>
 
-          <table>
-
-            <thead>
-
-              <tr>
-                <th>Transaction ID</th>
-                <th>Amount</th>
-                <th>Merchant</th>
-                <th>Location</th>
-                <th>Risk Score</th>
-                <th>Status</th>
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {transactions.length === 0 ? (
+              <thead>
 
                 <tr>
-                  <td
-                    colSpan="6"
-                    style={{
-                      textAlign: "center",
-                    }}
-                  >
-                    No transactions found
-                  </td>
+
+                  <th>
+                    Transaction ID
+                  </th>
+
+                  <th>
+                    Amount
+                  </th>
+
+                  <th>
+                    Merchant
+                  </th>
+
+                  <th>
+                    Location
+                  </th>
+
+                  <th>
+                    Risk Score
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
                 </tr>
 
-              ) : (
+              </thead>
 
-                transactions.map((transaction) => {
+              <tbody>
 
-                  const risk =
-                    transaction.riskScore || 0;
+                {transactions.length === 0 ? (
 
-                  return (
-                    <tr
-                      key={transaction._id}
+                  <tr>
+
+                    <td
+                      colSpan="6"
+                      style={{
+                        textAlign: "center",
+                        padding: "30px",
+                      }}
                     >
+                      No transactions found
+                    </td>
 
-                      <td>
-                        #
-                        {transaction._id
-                          .slice(-6)
-                          .toUpperCase()}
-                      </td>
+                  </tr>
 
-                      <td>
-                        ₹
-                        {Number(
-                          transaction.amount
-                        ).toLocaleString("en-IN")}
-                      </td>
+                ) : (
 
-                      <td>
-                        {transaction.merchant}
-                      </td>
+                  transactions.map(
+                    (transaction) => {
 
-                      <td>
-                        {transaction.location}
-                      </td>
+                      const risk =
+                        Number(
+                          transaction.riskScore
+                        ) || 0;
 
-                      <td>
-                        <span
-                          className={getRiskClass(
-                            risk
-                          )}
+                      return (
+                        <tr
+                          key={
+                            transaction._id ||
+                            transaction.transactionId
+                          }
                         >
-                          {risk}
-                        </span>
-                      </td>
 
-                      <td>
-                        <span
-                          className={`status ${getStatusClass(
-                            transaction.status ||
-                              "Safe"
-                          )}`}
-                        >
-                          {transaction.status ||
-                            "Safe"}
-                        </span>
-                      </td>
+                          {/* TRANSACTION ID */}
 
-                    </tr>
-                  );
-                })
+                          <td>
+                            #
+                            {
+                              transaction.transactionId
+                            }
+                          </td>
 
-              )}
+                          {/* AMOUNT */}
 
-            </tbody>
+                          <td>
+                            ₹
+                            {Number(
+                              transaction.amount
+                            ).toLocaleString(
+                              "en-IN"
+                            )}
+                          </td>
 
-          </table>
+                          {/* MERCHANT */}
 
-        </div>
+                          <td>
+                            {
+                              transaction.merchant
+                            }
+                          </td>
+
+                          {/* LOCATION */}
+
+                          <td>
+                            {
+                              transaction.location
+                            }
+                          </td>
+
+                          {/* RISK SCORE */}
+
+                          <td>
+
+                            <span
+                              className={getRiskClass(
+                                risk
+                              )}
+                            >
+                              {risk}
+                            </span>
+
+                          </td>
+
+                          {/* STATUS */}
+
+                          <td>
+
+                            <span
+                              className={`status ${getStatusClass(
+                                transaction.status
+                              )}`}
+                            >
+                              {
+                                transaction.status ===
+                                "Pending"
+                                  ? "Review"
+                                  : transaction.status
+                              }
+                            </span>
+
+                          </td>
+
+                        </tr>
+                      );
+                    }
+                  )
+
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
 
       </div>
 

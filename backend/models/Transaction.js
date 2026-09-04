@@ -2,17 +2,29 @@ const mongoose = require("mongoose");
 
 const transactionSchema = new mongoose.Schema(
   {
+    // ==========================================
+    // USER
+    // ==========================================
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
+    // ==========================================
+    // TRANSACTION ID
+    // ==========================================
+
     transactionId: {
       type: String,
       required: true,
       unique: true,
     },
+
+    // ==========================================
+    // BASIC TRANSACTION DETAILS
+    // ==========================================
 
     amount: {
       type: Number,
@@ -24,10 +36,40 @@ const transactionSchema = new mongoose.Schema(
       required: true,
     },
 
+    category: {
+      type: String,
+      required: true,
+    },
+
     location: {
       type: String,
       required: true,
     },
+
+    paymentMethod: {
+      type: String,
+      required: true,
+    },
+
+    // ==========================================
+    // BEHAVIOURAL SIGNALS
+    // ==========================================
+
+    frequency: {
+      type: String,
+      enum: ["Normal", "Unusual", "High"],
+      default: "Normal",
+    },
+
+    device: {
+      type: String,
+      enum: ["Known", "Unknown"],
+      default: "Known",
+    },
+
+    // ==========================================
+    // AI RISK RESULT
+    // ==========================================
 
     status: {
       type: String,
@@ -37,6 +79,8 @@ const transactionSchema = new mongoose.Schema(
 
     riskScore: {
       type: Number,
+      min: 0,
+      max: 100,
       default: 0,
     },
 
@@ -46,9 +90,13 @@ const transactionSchema = new mongoose.Schema(
       default: "Low",
     },
   },
+
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model("Transaction", transactionSchema);
+module.exports = mongoose.model(
+  "Transaction",
+  transactionSchema
+);
