@@ -1,8 +1,176 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "";
+
 function Dashboard() {
   const navigate = useNavigate();
+
+  // ==========================================
+  // STATES
+  // ==========================================
+
+  const [transactions, setTransactions] = useState([]);
+  const [stats, setStats] = useState({
+    totalTransactions: 0,
+    highRiskTransactions: 0,
+    fraudPrevented: 0,
+    averageRiskScore: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // ==========================================
+  // FETCH DASHBOARD DATA
+  // ==========================================
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          throw new Error("Please login again");
+        }
+
+        // ==========================================
+        // GET ALL TRANSACTIONS
+        // ==========================================
+
+        const transactionResponse = await fetch(
+          `${API_BASE_URL}/api/transactions`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
+        );
+
+        const transactionData =
+          await transactionResponse.json();
+
+        if (!transactionResponse.ok) {
+          throw new Error(
+            transactionData.message ||
+              "Failed to load transactions"
+          );
+        }
+
+        setTransactions(
+          transactionData.transactions || []
+        );
+
+        // ==========================================
+        // GET REAL TRANSACTION STATS
+        // ==========================================
+
+        const statsResponse = await fetch(
+          `${API_BASE_URL}/api/transactions/stats`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
+        );
+
+        const statsData =
+          await statsResponse.json();
+
+        if (!statsResponse.ok) {
+          throw new Error(
+            statsData.message ||
+              "Failed to load transaction stats"
+          );
+        }
+
+        console.log(
+          "Dashboard Stats:",
+          statsData
+        );
+
+        setStats({
+          totalTransactions:
+            statsData.totalTransactions || 0,
+
+          highRiskTransactions:
+            statsData.highRiskTransactions || 0,
+
+          fraudPrevented:
+            statsData.fraudPrevented || 0,
+
+          averageRiskScore:
+            statsData.averageRiskScore || 0,
+        });
+
+      } catch (err) {
+        console.error(
+          "Dashboard fetch error:",
+          err
+        );
+
+        setError(err.message);
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // ==========================================
+  // RISK CLASS
+  // ==========================================
+
+  const getRiskClass = (risk) => {
+    if (risk >= 80) {
+      return "risk-high";
+    }
+
+    if (risk >= 50) {
+      return "risk-medium";
+    }
+
+    return "risk-low";
+  };
+
+  // ==========================================
+  // STATUS CLASS
+  // ==========================================
+
+  const getStatusClass = (status) => {
+    if (status === "Blocked") {
+      return "blocked";
+    }
+
+    if (status === "Pending") {
+      return "review";
+    }
+
+    if (status === "Approved") {
+      return "safe";
+    }
+
+    return "safe";
+  };
+
+  // ==========================================
+  // DASHBOARD
+  // ==========================================
 
   return (
     <div className="dashboard-content">
@@ -12,6 +180,7 @@ function Dashboard() {
       <header className="dashboard-header">
 
         <div>
+
           <p className="eyebrow">
             SECURITY OVERVIEW
           </p>
@@ -19,7 +188,9 @@ function Dashboard() {
           <h1>
             Fraud Intelligence Dashboard
           </h1>
+
         </div>
+
 
         <div className="profile">
 
@@ -28,6 +199,7 @@ function Dashboard() {
           </div>
 
           <div className="profile-info">
+
             <strong>
               Security Analyst
             </strong>
@@ -35,11 +207,26 @@ function Dashboard() {
             <span>
               Administrator
             </span>
+
           </div>
 
         </div>
 
       </header>
+
+
+      {/* ================= ERROR ================= */}
+
+      {error && (
+        <p
+          style={{
+            color: "#ff4d4d",
+            marginBottom: "20px",
+          }}
+        >
+          {error}
+        </p>
+      )}
 
 
       {/* ================= STATISTICS ================= */}
@@ -51,6 +238,7 @@ function Dashboard() {
         <div className="stat-card">
 
           <div className="stat-top">
+
             <span>
               Total Transactions
             </span>
@@ -58,14 +246,17 @@ function Dashboard() {
             <div className="stat-icon">
               ↗
             </div>
+
           </div>
 
           <h2>
-            24,892
+            {loading
+              ? "..."
+              : stats.totalTransactions}
           </h2>
 
           <p className="positive">
-            +12.8% this month
+            Live database count
           </p>
 
         </div>
@@ -76,6 +267,7 @@ function Dashboard() {
         <div className="stat-card">
 
           <div className="stat-top">
+
             <span>
               High Risk
             </span>
@@ -83,14 +275,17 @@ function Dashboard() {
             <div className="stat-icon danger">
               !
             </div>
+
           </div>
 
           <h2>
-            187
+            {loading
+              ? "..."
+              : stats.highRiskTransactions}
           </h2>
 
           <p className="negative">
-            +4.3% detected
+            Risk score ≥ 80
           </p>
 
         </div>
@@ -101,6 +296,7 @@ function Dashboard() {
         <div className="stat-card">
 
           <div className="stat-top">
+
             <span>
               Fraud Prevented
             </span>
@@ -108,14 +304,19 @@ function Dashboard() {
             <div className="stat-icon">
               ✓
             </div>
+
           </div>
 
           <h2>
-            ₹18.4L
+            {loading
+              ? "..."
+              : `₹${Number(
+                  stats.fraudPrevented
+                ).toLocaleString("en-IN")}`}
           </h2>
 
           <p className="positive">
-            +18.2% protected
+            Blocked transactions
           </p>
 
         </div>
@@ -126,6 +327,7 @@ function Dashboard() {
         <div className="stat-card">
 
           <div className="stat-top">
+
             <span>
               AI Accuracy
             </span>
@@ -133,6 +335,7 @@ function Dashboard() {
             <div className="stat-icon">
               ✦
             </div>
+
           </div>
 
           <h2>
@@ -182,7 +385,9 @@ function Dashboard() {
             <div className="risk-circle">
 
               <strong>
-                23
+                {loading
+                  ? "..."
+                  : stats.averageRiskScore}
               </strong>
 
               <span>
@@ -195,12 +400,17 @@ function Dashboard() {
             <div className="risk-info">
 
               <h3>
-                Low Risk
+                {stats.averageRiskScore < 50
+                  ? "Low Risk"
+                  : stats.averageRiskScore < 80
+                  ? "Medium Risk"
+                  : "High Risk"}
               </h3>
 
               <p>
-                AI models currently detect a low
-                overall fraud probability.
+                AI models currently calculate
+                the average fraud risk from
+                your transactions.
               </p>
 
             </div>
@@ -209,7 +419,17 @@ function Dashboard() {
 
 
           <div className="risk-bar">
-            <div className="risk-progress"></div>
+
+            <div
+              className="risk-progress"
+              style={{
+                width: `${Math.min(
+                  stats.averageRiskScore,
+                  100
+                )}%`,
+              }}
+            ></div>
+
           </div>
 
 
@@ -274,9 +494,12 @@ function Dashboard() {
               </h3>
 
               <p>
-                7 transactions show behavior
-                similar to previously detected
-                fraud patterns.
+                {stats.highRiskTransactions}{" "}
+                high-risk transaction
+                {stats.highRiskTransactions !== 1
+                  ? "s"
+                  : ""}{" "}
+                detected in the current data.
               </p>
 
             </div>
@@ -287,7 +510,9 @@ function Dashboard() {
           <button
             className="secondary-btn"
             type="button"
-            onClick={() => navigate("/ai-analysis")}
+            onClick={() =>
+              navigate("/ai-analysis")
+            }
           >
             View AI Analysis →
           </button>
@@ -319,7 +544,9 @@ function Dashboard() {
           <button
             className="secondary-btn"
             type="button"
-            onClick={() => navigate("/transactions")}
+            onClick={() =>
+              navigate("/transactions")
+            }
           >
             View All
           </button>
@@ -327,171 +554,152 @@ function Dashboard() {
         </div>
 
 
-        <TransactionTable />
+        {/* ================= TABLE ================= */}
+
+        <div className="table-container">
+
+          <table>
+
+            <thead>
+
+              <tr>
+
+                <th>
+                  Transaction ID
+                </th>
+
+                <th>
+                  Amount
+                </th>
+
+                <th>
+                  Location
+                </th>
+
+                <th>
+                  Risk Score
+                </th>
+
+                <th>
+                  Status
+                </th>
+
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              {loading ? (
+
+                <tr>
+
+                  <td
+                    colSpan="5"
+                    style={{
+                      textAlign: "center",
+                      padding: "30px",
+                    }}
+                  >
+                    Loading transactions...
+                  </td>
+
+                </tr>
+
+              ) : transactions.length === 0 ? (
+
+                <tr>
+
+                  <td
+                    colSpan="5"
+                    style={{
+                      textAlign: "center",
+                      padding: "30px",
+                    }}
+                  >
+                    No transactions found
+                  </td>
+
+                </tr>
+
+              ) : (
+
+                transactions
+                  .slice(0, 4)
+                  .map((transaction) => {
+
+                    const risk =
+                      transaction.riskScore ?? 0;
+
+                    return (
+
+                      <tr
+                        key={transaction._id}
+                      >
+
+                        <td>
+                          #
+                          {transaction.transactionId}
+                        </td>
+
+
+                        <td>
+                          ₹
+                          {Number(
+                            transaction.amount
+                          ).toLocaleString("en-IN")}
+                        </td>
+
+
+                        <td>
+                          {transaction.location}
+                        </td>
+
+
+                        <td>
+
+                          <span
+                            className={getRiskClass(
+                              risk
+                            )}
+                          >
+                            {risk}
+                          </span>
+
+                        </td>
+
+
+                        <td>
+
+                          <span
+                            className={`status ${getStatusClass(
+                              transaction.status
+                            )}`}
+                          >
+                            {transaction.status}
+                          </span>
+
+                        </td>
+
+                      </tr>
+
+                    );
+
+                  })
+
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
 
       </section>
 
     </div>
   );
 }
-
-
-/* ======================================================
-   TRANSACTION TABLE
-====================================================== */
-
-function TransactionTable() {
-
-  const transactions = [
-    {
-      id: "#TXN-84291",
-      amount: "₹48,500",
-      location: "Mumbai, IN",
-      risk: 61,
-      status: "Review",
-    },
-
-    {
-      id: "#TXN-84290",
-      amount: "₹8,200",
-      location: "Delhi, IN",
-      risk: 12,
-      status: "Safe",
-    },
-
-    {
-      id: "#TXN-84289",
-      amount: "₹1,24,000",
-      location: "Bengaluru, IN",
-      risk: 89,
-      status: "Blocked",
-    },
-
-    {
-      id: "#TXN-84288",
-      amount: "₹16,750",
-      location: "Pune, IN",
-      risk: 18,
-      status: "Safe",
-    },
-  ];
-
-
-  const getRiskClass = (risk) => {
-
-    if (risk >= 80) {
-      return "risk-high";
-    }
-
-    if (risk >= 50) {
-      return "risk-medium";
-    }
-
-    return "risk-low";
-  };
-
-
-  const getStatusClass = (status) => {
-
-    if (status === "Blocked") {
-      return "blocked";
-    }
-
-    if (status === "Review") {
-      return "review";
-    }
-
-    return "safe";
-  };
-
-
-  return (
-
-    <div className="table-container">
-
-      <table>
-
-        <thead>
-
-          <tr>
-
-            <th>
-              Transaction ID
-            </th>
-
-            <th>
-              Amount
-            </th>
-
-            <th>
-              Location
-            </th>
-
-            <th>
-              Risk Score
-            </th>
-
-            <th>
-              Status
-            </th>
-
-          </tr>
-
-        </thead>
-
-
-        <tbody>
-
-          {transactions.map((transaction) => (
-
-            <tr key={transaction.id}>
-
-              <td>
-                {transaction.id}
-              </td>
-
-              <td>
-                {transaction.amount}
-              </td>
-
-              <td>
-                {transaction.location}
-              </td>
-
-              <td>
-
-                <span
-                  className={getRiskClass(transaction.risk)}
-                >
-                  {transaction.risk}
-                </span>
-
-              </td>
-
-              <td>
-
-                <span
-                  className={`status ${getStatusClass(
-                    transaction.status
-                  )}`}
-                >
-                  {transaction.status}
-                </span>
-
-              </td>
-
-            </tr>
-
-          ))}
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-  );
-}
-
 
 export default Dashboard;

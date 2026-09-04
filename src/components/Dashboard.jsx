@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "";
+
 function Dashboard() {
   const navigate = useNavigate();
 
@@ -41,7 +46,7 @@ function Dashboard() {
         // ==========================================
 
         const transactionResponse = await fetch(
-          "http://localhost:5000/api/transactions",
+          `${API_BASE_URL}/api/transactions`,
           {
             method: "GET",
             headers: {
@@ -71,7 +76,7 @@ function Dashboard() {
         // ==========================================
 
         const statsResponse = await fetch(
-          "http://localhost:5000/api/transactions/stats",
+          `${API_BASE_URL}/api/transactions/stats`,
           {
             method: "GET",
             headers: {
