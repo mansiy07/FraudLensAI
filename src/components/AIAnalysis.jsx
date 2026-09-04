@@ -40,17 +40,14 @@ function AIAnalysis() {
           throw new Error("Please login again");
         }
 
-        const response = await fetch(
-          "http://localhost:5000/api/ai-analysis",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            cache: "no-store",
-          }
-        );
+        const response = await fetch("/api/ai-analysis", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
 
         const data = await response.json();
 
@@ -63,6 +60,7 @@ function AIAnalysis() {
         setAnalysis(data);
       } catch (error) {
         console.error("AI analysis fetch error:", error);
+
         setAnalysisError(
           error.message || "Failed to load AI analysis"
         );
@@ -266,7 +264,7 @@ function AIAnalysis() {
       // ==========================================
 
       const transactionResponse = await fetch(
-        "http://localhost:5000/api/transactions",
+        "/api/transactions",
         {
           method: "POST",
 
@@ -287,8 +285,7 @@ function AIAnalysis() {
             paymentMethod: form.paymentMethod,
 
             // ======================================
-            // IMPORTANT:
-            // FREQUENCY + DEVICE NOW SAVED
+            // FREQUENCY + DEVICE
             // ======================================
 
             frequency: form.frequency,
@@ -335,7 +332,7 @@ function AIAnalysis() {
 
       try {
         const analysisResponse = await fetch(
-          "http://localhost:5000/api/ai-analysis",
+          "/api/ai-analysis",
           {
             method: "GET",
 
@@ -967,7 +964,6 @@ function AIAnalysis() {
           <div className="panel-header">
 
             <div>
-
               <p className="eyebrow">
                 AI RISK ENGINE
               </p>
@@ -975,7 +971,6 @@ function AIAnalysis() {
               <h2>
                 Current Model Status
               </h2>
-
             </div>
 
             <span className="live-badge">
@@ -1039,7 +1034,6 @@ function AIAnalysis() {
           <div className="panel-header">
 
             <div>
-
               <p className="eyebrow">
                 THREAT INTELLIGENCE
               </p>
@@ -1047,7 +1041,6 @@ function AIAnalysis() {
               <h2>
                 AI Monitoring
               </h2>
-
             </div>
 
             <span className="ai-badge">
@@ -1092,7 +1085,6 @@ function AIAnalysis() {
         <div className="panel-header">
 
           <div>
-
             <p className="eyebrow">
               AI DECISION PROCESS
             </p>
@@ -1100,7 +1092,6 @@ function AIAnalysis() {
             <h2>
               How FraudLens AI Detects Fraud
             </h2>
-
           </div>
 
           <span className="ai-badge">
