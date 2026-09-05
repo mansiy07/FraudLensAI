@@ -15,6 +15,13 @@ import DashboardLayout from "./components/DashboardLayout";
 
 import "./App.css";
 
+// Local → localhost backend
+// Railway → same Railway domain
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "";
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(
     !!localStorage.getItem("token")
@@ -54,7 +61,7 @@ function App() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/auth/login",
+        `${API_BASE_URL}/api/auth/login`,
         {
           method: "POST",
           headers: {
@@ -119,7 +126,7 @@ function App() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/auth/register",
+        `${API_BASE_URL}/api/auth/register`,
         {
           method: "POST",
           headers: {
