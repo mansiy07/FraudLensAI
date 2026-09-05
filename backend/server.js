@@ -1,9 +1,21 @@
+const dns = require("dns");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
 
 require("dotenv").config();
+
+// ==========================================
+// LOCAL MONGODB ATLAS DNS FIX
+// ==========================================
+// Local machine par MongoDB Atlas SRV lookup
+// ke liye Google DNS use hoga.
+// Railway production par iska effect nahi hoga.
+
+if (process.env.NODE_ENV !== "production") {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+}
 
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
