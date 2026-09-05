@@ -8,10 +8,6 @@ require("dotenv").config();
 
 // ==========================================
 // LOCAL MONGODB ATLAS DNS FIX
-// ==========================================
-// Local machine par MongoDB Atlas SRV lookup
-// ke liye Google DNS use hoga.
-// Railway production par iska effect nahi hoga.
 
 if (process.env.NODE_ENV !== "production") {
   dns.setServers(["8.8.8.8", "8.8.4.4"]);
