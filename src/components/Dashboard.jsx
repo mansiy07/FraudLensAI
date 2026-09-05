@@ -1,16 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
-const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "";
-
-const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "";
-
+const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:5000" : "";
 function Dashboard() {
   const navigate = useNavigate();
 
